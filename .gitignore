@@ -1,0 +1,5 @@
+examples/*.out
+tests/all
+
+*.d
+*.o
