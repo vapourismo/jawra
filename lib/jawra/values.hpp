@@ -24,12 +24,12 @@ struct ValueWrapper<uint32_t> {
 	constexpr const char* TypeName = "unsigned integer";
 
 	static inline
-	bool check(v8::Local<v8::Value> value) {
+	bool check(v8::Handle<v8::Value> value) {
 		return value->IsUint32();
 	}
 
 	static inline
-	uint32_t unpack(v8::Local<v8::Value> value) {
+	uint32_t unpack(v8::Handle<v8::Value> value) {
 		return value->Uint32Value();
 	}
 
@@ -45,12 +45,12 @@ struct ValueWrapper<int32_t> {
 	constexpr const char* TypeName = "signed integer";
 
 	static inline
-	bool check(v8::Local<v8::Value> value) {
+	bool check(v8::Handle<v8::Value> value) {
 		return value->IsInt32();
 	}
 
 	static inline
-	int32_t unpack(v8::Local<v8::Value> value) {
+	int32_t unpack(v8::Handle<v8::Value> value) {
 		return value->Int32Value();
 	}
 
@@ -66,12 +66,12 @@ struct ValueWrapper<double> {
 	constexpr const char* TypeName = "number";
 
 	static inline
-	bool check(v8::Local<v8::Value> value) {
+	bool check(v8::Handle<v8::Value> value) {
 		return value->IsNumber();
 	}
 
 	static inline
-	double unpack(v8::Local<v8::Value> value) {
+	double unpack(v8::Handle<v8::Value> value) {
 		return value->NumberValue();
 	}
 
@@ -87,12 +87,12 @@ struct ValueWrapper<std::string> {
 	constexpr const char* TypeName = "string";
 
 	static inline
-	bool check(v8::Local<v8::Value> value) {
+	bool check(v8::Handle<v8::Value> value) {
 		return value->IsString();
 	}
 
 	static inline
-	std::string unpack(v8::Local<v8::Value> value) {
+	std::string unpack(v8::Handle<v8::Value> value) {
 		v8::String::Utf8Value value_string(value);
 		return std::string(*value_string);
 	}
