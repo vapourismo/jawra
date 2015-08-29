@@ -1,5 +1,5 @@
 examples/*.out
-tests/all
-
+test.js
+build/
 *.d
 *.o
