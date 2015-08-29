@@ -8,6 +8,7 @@
 #define JAWRA_FUNCTIONS_H_
 
 #include "common.hpp"
+#include "values.hpp"
 
 JAWRA_NS_BEGIN
 
