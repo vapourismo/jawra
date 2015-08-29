@@ -10,7 +10,11 @@
 #include "common.hpp"
 #include "values.hpp"
 
+#include <type_traits>
+
 JAWRA_NS_BEGIN
+
+using CallbackInfo = const v8::FunctionCallbackInfo<v8::Value>;
 
 template <typename T>
 struct FunctionParameterWrapper {
@@ -20,7 +24,7 @@ struct FunctionParameterWrapper {
 template <typename R, typename T>
 struct FunctionParameterWrapper<R(T)> {
 	static inline
-	bool check(const v8::FunctionCallbackInfo<v8::Value>& info, size_t idx) {
+	bool check(CallbackInfo& info, size_t idx) {
 		if (ValueWrapper<T>::check(info[idx])) {
 			return true;
 		} else {
@@ -36,7 +40,7 @@ struct FunctionParameterWrapper<R(T)> {
 	}
 
 	template <typename F, typename... A> static inline
-	R direct(const v8::FunctionCallbackInfo<v8::Value>& info, size_t idx, F hook, A&&... args) {
+	R direct(CallbackInfo& info, size_t idx, F hook, A&&... args) {
 		return hook(
 			std::forward<A>(args)...,
 			ValueWrapper<T>::unpack(info[idx])
@@ -47,14 +51,14 @@ struct FunctionParameterWrapper<R(T)> {
 template <typename R, typename T1, typename... TR>
 struct FunctionParameterWrapper<R(T1, TR...)> {
 	static inline
-	bool check(const v8::FunctionCallbackInfo<v8::Value>& info, size_t idx) {
+	bool check(CallbackInfo& info, size_t idx) {
 		return
-			ValueWrapper<T1>::check(info[idx]) &&
+			FunctionParameterWrapper<R(T1)>::check(info, idx) &&
 			FunctionParameterWrapper<R(TR...)>::check(info, idx + 1);
 	}
 
 	template <typename F, typename... A> static inline
-	R direct(const v8::FunctionCallbackInfo<v8::Value>& info, size_t idx, F hook, A&&... args) {
+	R direct(CallbackInfo& info, size_t idx, F hook, A&&... args) {
 		return FunctionParameterWrapper<R(TR...)>::direct(
 			info,
 			idx + 1,
@@ -68,7 +72,7 @@ struct FunctionParameterWrapper<R(T1, TR...)> {
 template <typename R, typename... A>
 struct FunctionWrapper {
 	template <R (* function_pointer)(A...)> static inline
-	void wrapped(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	void wrapped(CallbackInfo& args) {
 		v8::Isolate* isolate = args.GetIsolate();
 
 		if (args.Length() < signed(sizeof...(A))) {
@@ -95,7 +99,7 @@ struct FunctionWrapper {
 template <>
 struct FunctionWrapper<void()> {
 	template <void (* function_pointer)()> static inline
-	void wrapped(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	void wrapped(CallbackInfo& args) {
 		function_pointer();
 	}
 };
@@ -103,7 +107,7 @@ struct FunctionWrapper<void()> {
 template <typename... A>
 struct FunctionWrapper<void, A...> {
 	template <void (* function_pointer)(A...)> static inline
-	void wrapped(const v8::FunctionCallbackInfo<v8::Value>& args) {
+	void wrapped(CallbackInfo& args) {
 		v8::Isolate* isolate = args.GetIsolate();
 
 		if (args.Length() < signed(sizeof...(A))) {
