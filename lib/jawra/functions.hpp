@@ -91,6 +91,37 @@ struct FunctionWrapper {
 	}
 };
 
+template <>
+struct FunctionWrapper<void()> {
+	template <void (* function_pointer)()> static inline
+	void wrapped(const v8::FunctionCallbackInfo<v8::Value>& args) {
+		function_pointer();
+	}
+};
+
+template <typename... A>
+struct FunctionWrapper<void, A...> {
+	template <void (* function_pointer)(A...)> static inline
+	void wrapped(const v8::FunctionCallbackInfo<v8::Value>& args) {
+		v8::Isolate* isolate = args.GetIsolate();
+
+		if (args.Length() < signed(sizeof...(A))) {
+			std::string error_message =
+				"Expected " + std::to_string(sizeof...(A)) + " parameters";
+			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+			return;
+		} else if (!FunctionParameterWrapper<void(A...)>::check(args, 0)) {
+			return;
+		}
+
+		FunctionParameterWrapper<void(A...)>::direct(
+			args,
+			0,
+			function_pointer
+		);
+	}
+};
+
 template <typename T>
 struct SignatureWrapper {
 	static_assert(sizeof(T) == -1, "Invalid specialization of SignatureWrapper");
