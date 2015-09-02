@@ -56,8 +56,11 @@ struct ObjectWrapper: v8::Handle<v8::Object> {
 
 	template <typename V, typename K>
 	bool check(K key) {
-		auto value = handle->Get(ValueWrapper<K>::pack(isolate, key));
-		return ValueWrapper<V>::check(value);
+		auto key_handle = ValueWrapper<K>::pack(isolate, key);
+		if (!handle->Has(key_handle))
+			return false;
+
+		return ValueWrapper<V>::check(handle->Get(key_handle));
 	}
 
 	template <typename V, typename K>
