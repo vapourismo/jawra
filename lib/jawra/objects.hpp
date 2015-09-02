@@ -66,7 +66,6 @@ struct ObjectWrapper: v8::Handle<v8::Object> {
 	template <typename V, typename K>
 	bool expect(K key) {
 		auto key_handle = ValueWrapper<K>::pack(isolate, key);
-		auto value = handle->Get(key_handle);
 
 		if (!handle->Has(key_handle)) {
 			v8::String::Utf8Value key_string(key_handle);
@@ -74,7 +73,11 @@ struct ObjectWrapper: v8::Handle<v8::Object> {
 			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
 
 			return false;
-		} else if (ValueWrapper<V>::check(value)) {
+		}
+
+		auto value = handle->Get(key_handle);
+
+		if (ValueWrapper<V>::check(value)) {
 			return true;
 		} else {
 			v8::String::Utf8Value key_string(key_handle);
