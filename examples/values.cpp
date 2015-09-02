@@ -1,5 +1,6 @@
 #include <jawra/values.hpp>
 #include <jawra/functions.hpp>
+#include <jawra/objects.hpp>
 
 #include <node.h>
 
@@ -10,18 +11,18 @@
 using namespace std;
 using namespace jawra;
 
-int32_t add_test(int32_t a, int32_t b) {
-	return a + b;
+void print_field(ObjectWrapper wrapper) {
+	if (wrapper.expect<int32_t>("key"))
+		std::cout << wrapper.get<int32_t>("key") << std::endl;
 }
 
 static
 void jawra_examples_init(v8::Handle<v8::Object> module) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
-	v8::FunctionCallback callback = JAWRA_WRAP_FUNCTION(add_test);
 
-	v8::Local<v8::String> key = pack(isolate, "addTest");
-	v8::Local<v8::Function> value = pack(isolate, callback);
-	module->Set(key, value);
+	ObjectWrapper module_wrapper(isolate, module);
+
+	module_wrapper.set("test", JAWRA_WRAP_FUNCTION(print_field));
 }
 
 NODE_MODULE(jawra_examples, jawra_examples_init)
