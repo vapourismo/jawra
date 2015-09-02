@@ -9,6 +9,7 @@
 
 #include "common.hpp"
 
+#include <node_buffer.h>
 #include <string>
 
 JAWRA_NS_BEGIN
@@ -100,6 +101,58 @@ struct ValueWrapper<std::string> {
 	static inline
 	v8::Local<v8::String> pack(v8::Isolate* isolate, const std::string& value) {
 		return v8::String::NewFromUtf8(isolate, value.c_str());
+	}
+};
+
+struct Buffer {
+	void* data;
+	size_t length;
+};
+
+template <>
+struct ValueWrapper<Buffer> {
+	static
+	void freeData(char* data, void*) {
+		free(data);
+	}
+
+	static
+	constexpr const char* TypeName = "buffer";
+
+	static inline
+	bool check(v8::Handle<v8::Value> value) {
+		return node::Buffer::HasInstance(value);
+	}
+
+	static inline
+	Buffer unpack(v8::Handle<v8::Value> value) {
+		return {node::Buffer::Data(value), node::Buffer::Length(value)};
+	}
+
+	static inline
+	v8::Local<v8::Object> pack(v8::Isolate* isolate, const Buffer& value) {
+		return node::Buffer::New(isolate, (char*) value.data, value.length, freeData, nullptr);
+	}
+};
+
+template <>
+struct ValueWrapper<v8::Handle<v8::Value>> {
+	static
+	constexpr const char* TypeName = "anything";
+
+	static inline
+	bool check(v8::Handle<v8::Value> value) {
+		return true;
+	}
+
+	static inline
+	v8::Handle<v8::Value> unpack(v8::Handle<v8::Value> value) {
+		return value;
+	}
+
+	static inline
+	v8::Local<v8::Value> pack(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+		return value;
 	}
 };
 
