@@ -12,8 +12,8 @@ using namespace std;
 using namespace jawra;
 
 void print_field(ObjectWrapper wrapper) {
-	if (wrapper.expect<int32_t>("key"))
-		std::cout << wrapper.get<int32_t>("key") << std::endl;
+	if (wrapper.expect<bool>("key"))
+		std::cout << wrapper.get<bool>("key") << std::endl;
 }
 
 static

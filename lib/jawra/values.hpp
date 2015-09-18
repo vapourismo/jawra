@@ -20,6 +20,27 @@ struct ValueWrapper {
 };
 
 template <>
+struct ValueWrapper<bool> {
+	static
+	constexpr const char* TypeName = "boolean";
+
+	static inline
+	bool check(v8::Handle<v8::Value> value) {
+		return value->IsBoolean();
+	}
+
+	static inline
+	bool unpack(v8::Handle<v8::Value> value) {
+		return value->BooleanValue();
+	}
+
+	static inline
+	v8::Local<v8::Boolean> pack(v8::Isolate* isolate, bool value) {
+		return v8::Boolean::New(isolate, value);
+	}
+};
+
+template <>
 struct ValueWrapper<uint32_t> {
 	static
 	constexpr const char* TypeName = "unsigned integer";
