@@ -17,12 +17,12 @@ JAWRA_NS_BEGIN
 using CallbackInfo = const v8::FunctionCallbackInfo<v8::Value>;
 
 template <typename T>
-struct FunctionParameterWrapper {
-	static_assert(sizeof(T) == -1, "Invalid specialization of FunctionParameterWrapper");
+struct ParameterWraper {
+	static_assert(sizeof(T) == -1, "Invalid specialization of ParameterWraper");
 };
 
 template <typename R, typename T>
-struct FunctionParameterWrapper<R(T)> {
+struct ParameterWraper<R(T)> {
 	static inline
 	bool check(CallbackInfo& info, size_t idx) {
 		if (ValueWrapper<T>::check(info[idx])) {
@@ -40,7 +40,7 @@ struct FunctionParameterWrapper<R(T)> {
 	}
 
 	template <typename F, typename... A> static inline
-	R direct(CallbackInfo& info, size_t idx, F hook, A&&... args) {
+	R direct(CallbackInfo& info, size_t idx, F&& hook, A&&... args) {
 		return hook(
 			std::forward<A>(args)...,
 			ValueWrapper<T>::unpack(info[idx])
@@ -49,47 +49,54 @@ struct FunctionParameterWrapper<R(T)> {
 };
 
 template <typename R, typename T1, typename... TR>
-struct FunctionParameterWrapper<R(T1, TR...)> {
+struct ParameterWraper<R(T1, TR...)> {
 	static inline
 	bool check(CallbackInfo& info, size_t idx) {
 		return
-			FunctionParameterWrapper<R(T1)>::check(info, idx) &&
-			FunctionParameterWrapper<R(TR...)>::check(info, idx + 1);
+			ParameterWraper<R(T1)>::check(info, idx) &&
+			ParameterWraper<R(TR...)>::check(info, idx + 1);
 	}
 
 	template <typename F, typename... A> static inline
-	R direct(CallbackInfo& info, size_t idx, F hook, A&&... args) {
-		return FunctionParameterWrapper<R(TR...)>::direct(
+	R direct(CallbackInfo& info, size_t idx, F&& hook, A&&... args) {
+		return ParameterWraper<R(TR...)>::direct(
 			info,
 			idx + 1,
-			hook,
+			std::forward<F>(hook),
 			std::forward<A>(args)...,
 			ValueWrapper<T1>::unpack(info[idx])
 		);
 	}
 };
 
+template <typename... A> static inline
+bool verify_parameters(v8::Isolate* isolate, CallbackInfo& args) {
+	if (args.Length() < signed(sizeof...(A))) {
+		std::string error_message =
+			"Expected " + std::to_string(sizeof...(A)) + " parameters";
+		isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+		return false;
+	}
+
+	return ParameterWraper<void(A...)>::check(args, 0);
+}
+
 template <typename R, typename... A>
 struct FunctionWrapper {
-	template <R (* function_pointer)(A...)> static inline
-	void wrapped(CallbackInfo& args) {
+	template <R (* function_pointer)(A...), typename... X> static inline
+	void wrapped(CallbackInfo& args, X&&... extra) {
 		v8::Isolate* isolate = args.GetIsolate();
 
-		if (args.Length() < signed(sizeof...(A))) {
-			std::string error_message =
-				"Expected " + std::to_string(sizeof...(A)) + " parameters";
-			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+		if (!verify_parameters<A...>(isolate, args))
 			return;
-		} else if (!FunctionParameterWrapper<R(A...)>::check(args, 0)) {
-			return;
-		}
 
 		auto return_value = ValueWrapper<R>::pack(
 			isolate,
-			FunctionParameterWrapper<R(A...)>::direct(
+			ParameterWraper<R(A...)>::direct(
 				args,
 				0,
-				function_pointer
+				function_pointer,
+				std::forward<X>(extra)...
 			)
 		);
 		args.GetReturnValue().Set(return_value);
@@ -98,48 +105,40 @@ struct FunctionWrapper {
 
 template <>
 struct FunctionWrapper<void> {
-	template <void (* function_pointer)()> static inline
-	void wrapped(CallbackInfo& args) {
-		function_pointer();
+	template <void (* function_pointer)(), typename... X> static inline
+	void wrapped(CallbackInfo& args, X&&... extra) {
+		function_pointer(std::forward<X>(extra)...);
 	}
 };
 
 template <typename... A>
 struct FunctionWrapper<void, A...> {
-	template <void (* function_pointer)(A...)> static inline
-	void wrapped(CallbackInfo& args) {
+	template <void (* function_pointer)(A...), typename... X> static inline
+	void wrapped(CallbackInfo& args, X&&... extra) {
 		v8::Isolate* isolate = args.GetIsolate();
 
-		if (args.Length() < signed(sizeof...(A))) {
-			std::string error_message =
-				"Expected " + std::to_string(sizeof...(A)) + " parameters";
-			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+		if (!verify_parameters<A...>(isolate, args))
 			return;
-		} else if (!FunctionParameterWrapper<void(A...)>::check(args, 0)) {
-			return;
-		}
 
-		FunctionParameterWrapper<void(A...)>::direct(
+		ParameterWraper<void(A...)>::direct(
 			args,
 			0,
-			function_pointer
+			function_pointer,
+			std::forward<X>(extra)...
 		);
 	}
 };
 
 template <typename T>
-struct SignatureWrapper {
-	static_assert(sizeof(T) == -1, "Invalid specialization of SignatureWrapper");
+struct FunctionSignatureWrapper {
+	static_assert(sizeof(T) == -1, "Invalid specialization of FunctionSignatureWrapper");
 };
 
 template <typename R, typename... A>
-struct SignatureWrapper<R(A...)>: FunctionWrapper<R, A...> {};
-
-template <typename R, typename... A>
-struct SignatureWrapper<R(*)(A...)>: FunctionWrapper<R, A...> {};
+struct FunctionSignatureWrapper<R(*)(A...)>: FunctionWrapper<R, A...> {};
 
 #define JAWRA_WRAP_FUNCTION(fun) \
-	(&jawra::SignatureWrapper<decltype(fun)>::template wrapped<fun>)
+	(&jawra::FunctionSignatureWrapper<decltype(&fun)>::template wrapped<&fun>)
 
 JAWRA_NS_END
 
