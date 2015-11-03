@@ -18,8 +18,9 @@
 #define JAWRA_NS_BEGIN namespace jawra {
 #define JAWRA_NS_END }
 
-// Version MAJOR.MINOR.PATH
+// Version MAJOR.MINOR.PATCH
 #define JAWRA_VERSION_MAJOR 0
-#define JAWRA_VERSION_MINOR 1
+#define JAWRA_VERSION_MINOR 0
+#define JAWRA_VERSION_PATCH 0
 
 #endif
