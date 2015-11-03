@@ -97,7 +97,7 @@ struct FunctionWrapper {
 };
 
 template <>
-struct FunctionWrapper<void()> {
+struct FunctionWrapper<void> {
 	template <void (* function_pointer)()> static inline
 	void wrapped(CallbackInfo& args) {
 		function_pointer();
