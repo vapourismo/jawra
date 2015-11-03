@@ -95,6 +95,16 @@ struct ObjectWrapper: v8::Local<v8::Object> {
 		auto value = handle->Get(ValueWrapper<K>::pack(isolate, key));
 		return ValueWrapper<V>::unpack(value);
 	}
+
+	template <typename V>
+	void internal(int idx, V value) {
+		handle->SetInternalField(idx, ValueWrapper<V>::pack(isolate, value));
+	}
+
+	template <typename V>
+	V internal(int idx) {
+		return ValueWrapper<V>::unpack(handle->GetInternalField(idx));
+	}
 };
 
 template <>
