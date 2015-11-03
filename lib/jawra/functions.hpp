@@ -21,6 +21,19 @@ struct ParameterWraper {
 	static_assert(sizeof(T) == -1, "Invalid specialization of ParameterWraper");
 };
 
+template <typename R>
+struct ParameterWraper<R()> {
+	static inline
+	bool check(CallbackInfo& info, size_t idx) {
+		return true;
+	}
+
+	template <typename F, typename... A> static inline
+	R direct(CallbackInfo& info, size_t idx, F&& hook, A&&... args) {
+		return hook(std::forward<A>(args)...);
+	}
+};
+
 template <typename R, typename T>
 struct ParameterWraper<R(T)> {
 	static inline
@@ -41,10 +54,7 @@ struct ParameterWraper<R(T)> {
 
 	template <typename F, typename... A> static inline
 	R direct(CallbackInfo& info, size_t idx, F&& hook, A&&... args) {
-		return hook(
-			std::forward<A>(args)...,
-			ValueWrapper<T>::unpack(info[idx])
-		);
+		return hook(std::forward<A>(args)..., ValueWrapper<T>::unpack(info[idx]));
 	}
 };
 
@@ -81,6 +91,12 @@ bool verify_parameters(v8::Isolate* isolate, CallbackInfo& args) {
 	return ParameterWraper<void(A...)>::check(args, 0);
 }
 
+template <typename T>
+struct This: T {
+	This(const T& t): T(std::forward<T>(t)) {}
+	This(T&& t): T(std::forward<T>(t)) {}
+};
+
 template <typename R, typename... A>
 struct FunctionWrapper {
 	template <R (* function_pointer)(A...)> static inline
@@ -102,11 +118,34 @@ struct FunctionWrapper {
 	}
 };
 
-template <>
-struct FunctionWrapper<void> {
-	template <void (* function_pointer)()> static inline
+template <typename R, typename T, typename... A>
+struct FunctionWrapper<R, This<T>, A...> {
+	template <R (* function_pointer)(This<T>, A...)> static inline
 	void wrapped(CallbackInfo& args) {
-		function_pointer();
+		v8::Isolate* isolate = args.GetIsolate();
+		v8::Local<v8::Object> self = args.This();
+
+		if (!ValueWrapper<T>::check(self)) {
+			std::string error_message =
+				"Type mismatch for 'this': Expected " + std::string(ValueWrapper<T>::TypeName);
+			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+
+			return;
+		}
+
+		if (!verify_parameters<A...>(isolate, args))
+			return;
+
+		auto return_value = ValueWrapper<R>::pack(
+			isolate,
+			ParameterWraper<R(A...)>::direct(
+				args,
+				0,
+				function_pointer,
+				ValueWrapper<T>::unpack(self)
+			)
+		);
+		args.GetReturnValue().Set(return_value);
 	}
 };
 
@@ -123,6 +162,33 @@ struct FunctionWrapper<void, A...> {
 			args,
 			0,
 			function_pointer
+		);
+	}
+};
+
+template <typename T, typename... A>
+struct FunctionWrapper<void, This<T>, A...> {
+	template <void (* function_pointer)(This<T>, A...)> static inline
+	void wrapped(CallbackInfo& args) {
+		v8::Isolate* isolate = args.GetIsolate();
+		v8::Local<v8::Object> self = args.This();
+
+		if (!ValueWrapper<T>::check(self)) {
+			std::string error_message =
+				"Type mismatch for 'this': Expected " + std::string(ValueWrapper<T>::TypeName);
+			isolate->ThrowException(v8::Exception::TypeError(pack(isolate, error_message)));
+
+			return;
+		}
+
+		if (!verify_parameters<A...>(isolate, args))
+			return;
+
+		ParameterWraper<void(A...)>::direct(
+			args,
+			0,
+			function_pointer,
+			ValueWrapper<T>::unpack(self)
 		);
 	}
 };
