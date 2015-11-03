@@ -83,8 +83,8 @@ bool verify_parameters(v8::Isolate* isolate, CallbackInfo& args) {
 
 template <typename R, typename... A>
 struct FunctionWrapper {
-	template <R (* function_pointer)(A...), typename... X> static inline
-	void wrapped(CallbackInfo& args, X&&... extra) {
+	template <R (* function_pointer)(A...)> static inline
+	void wrapped(CallbackInfo& args) {
 		v8::Isolate* isolate = args.GetIsolate();
 
 		if (!verify_parameters<A...>(isolate, args))
@@ -95,8 +95,7 @@ struct FunctionWrapper {
 			ParameterWraper<R(A...)>::direct(
 				args,
 				0,
-				function_pointer,
-				std::forward<X>(extra)...
+				function_pointer
 			)
 		);
 		args.GetReturnValue().Set(return_value);
@@ -105,16 +104,16 @@ struct FunctionWrapper {
 
 template <>
 struct FunctionWrapper<void> {
-	template <void (* function_pointer)(), typename... X> static inline
-	void wrapped(CallbackInfo& args, X&&... extra) {
-		function_pointer(std::forward<X>(extra)...);
+	template <void (* function_pointer)()> static inline
+	void wrapped(CallbackInfo& args) {
+		function_pointer();
 	}
 };
 
 template <typename... A>
 struct FunctionWrapper<void, A...> {
-	template <void (* function_pointer)(A...), typename... X> static inline
-	void wrapped(CallbackInfo& args, X&&... extra) {
+	template <void (* function_pointer)(A...)> static inline
+	void wrapped(CallbackInfo& args) {
 		v8::Isolate* isolate = args.GetIsolate();
 
 		if (!verify_parameters<A...>(isolate, args))
@@ -123,8 +122,7 @@ struct FunctionWrapper<void, A...> {
 		ParameterWraper<void(A...)>::direct(
 			args,
 			0,
-			function_pointer,
-			std::forward<X>(extra)...
+			function_pointer
 		);
 	}
 };
