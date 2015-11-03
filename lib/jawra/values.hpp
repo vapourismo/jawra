@@ -104,6 +104,27 @@ struct ValueWrapper<double> {
 };
 
 template <>
+struct ValueWrapper<void*> {
+	static
+	constexpr const char* TypeName = "external";
+
+	static inline
+	bool check(v8::Local<v8::Value> value) {
+		return value->IsExternal();
+	}
+
+	static inline
+	void* unpack(v8::Local<v8::Value> value) {
+		return v8::Local<v8::External>::Cast(value)->Value();
+	}
+
+	static inline
+	v8::Local<v8::External> pack(v8::Isolate* isolate, void* value) {
+		return v8::External::New(isolate, value);
+	}
+};
+
+template <>
 struct ValueWrapper<std::string> {
 	static
 	constexpr const char* TypeName = "string";
@@ -179,6 +200,27 @@ struct ValueWrapper<v8::Local<v8::Value>> {
 
 	static inline
 	v8::Local<v8::Value> pack(v8::Isolate* isolate, v8::Local<v8::Value> value) {
+		return value;
+	}
+};
+
+template <>
+struct ValueWrapper<v8::Local<v8::Function>> {
+	static
+	constexpr const char* TypeName = "function";
+
+	static inline
+	bool check(v8::Local<v8::Value> value) {
+		return value->IsFunction();
+	}
+
+	static inline
+	v8::Local<v8::Function> unpack(v8::Local<v8::Value> value) {
+		return v8::Local<v8::Function>::Cast(value);
+	}
+
+	static inline
+	v8::Local<v8::Function> pack(v8::Isolate* isolate, v8::Local<v8::Function> value) {
 		return value;
 	}
 };
