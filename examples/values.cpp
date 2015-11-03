@@ -1,7 +1,4 @@
-#include <jawra/values.hpp>
-#include <jawra/functions.hpp>
-#include <jawra/objects.hpp>
-
+#include <jawra.hpp>
 #include <node.h>
 
 #include <iostream>
