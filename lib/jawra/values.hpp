@@ -25,12 +25,12 @@ struct ValueWrapper<bool> {
 	constexpr const char* TypeName = "boolean";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsBoolean();
 	}
 
 	static inline
-	bool unpack(v8::Handle<v8::Value> value) {
+	bool unpack(v8::Local<v8::Value> value) {
 		return value->BooleanValue();
 	}
 
@@ -46,12 +46,12 @@ struct ValueWrapper<uint32_t> {
 	constexpr const char* TypeName = "unsigned integer";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsUint32();
 	}
 
 	static inline
-	uint32_t unpack(v8::Handle<v8::Value> value) {
+	uint32_t unpack(v8::Local<v8::Value> value) {
 		return value->Uint32Value();
 	}
 
@@ -67,12 +67,12 @@ struct ValueWrapper<int32_t> {
 	constexpr const char* TypeName = "signed integer";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsInt32();
 	}
 
 	static inline
-	int32_t unpack(v8::Handle<v8::Value> value) {
+	int32_t unpack(v8::Local<v8::Value> value) {
 		return value->Int32Value();
 	}
 
@@ -88,12 +88,12 @@ struct ValueWrapper<double> {
 	constexpr const char* TypeName = "number";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsNumber();
 	}
 
 	static inline
-	double unpack(v8::Handle<v8::Value> value) {
+	double unpack(v8::Local<v8::Value> value) {
 		return value->NumberValue();
 	}
 
@@ -109,12 +109,12 @@ struct ValueWrapper<std::string> {
 	constexpr const char* TypeName = "string";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsString();
 	}
 
 	static inline
-	std::string unpack(v8::Handle<v8::Value> value) {
+	std::string unpack(v8::Local<v8::Value> value) {
 		v8::String::Utf8Value value_string(value);
 		return std::string(*value_string);
 	}
@@ -141,38 +141,44 @@ struct ValueWrapper<Buffer> {
 	constexpr const char* TypeName = "buffer";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return node::Buffer::HasInstance(value);
 	}
 
 	static inline
-	Buffer unpack(v8::Handle<v8::Value> value) {
+	Buffer unpack(v8::Local<v8::Value> value) {
 		return {node::Buffer::Data(value), node::Buffer::Length(value)};
 	}
 
 	static inline
-	v8::Local<v8::Object> pack(v8::Isolate* isolate, const Buffer& value) {
-		return node::Buffer::New(isolate, (char*) value.data, value.length, freeData, nullptr);
+	v8::Local<v8::Value> pack(v8::Isolate* isolate, const Buffer& value) {
+		v8::MaybeLocal<v8::Object> result =
+			node::Buffer::New(isolate, (char*) value.data, value.length, freeData, nullptr);
+
+		if (result.IsEmpty())
+			return v8::Null(isolate);
+		else
+			return result.ToLocalChecked();
 	}
 };
 
 template <>
-struct ValueWrapper<v8::Handle<v8::Value>> {
+struct ValueWrapper<v8::Local<v8::Value>> {
 	static
 	constexpr const char* TypeName = "anything";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return true;
 	}
 
 	static inline
-	v8::Handle<v8::Value> unpack(v8::Handle<v8::Value> value) {
+	v8::Local<v8::Value> unpack(v8::Local<v8::Value> value) {
 		return value;
 	}
 
 	static inline
-	v8::Local<v8::Value> pack(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+	v8::Local<v8::Value> pack(v8::Isolate* isolate, v8::Local<v8::Value> value) {
 		return value;
 	}
 };

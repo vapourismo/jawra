@@ -12,34 +12,34 @@
 
 JAWRA_NS_BEGIN
 
-struct ObjectWrapper: v8::Handle<v8::Object> {
+struct ObjectWrapper: v8::Local<v8::Object> {
 	v8::Isolate* isolate;
 	v8::Object* handle;
 
 	inline
 	ObjectWrapper(v8::Isolate* isolate):
-		v8::Handle<v8::Object>(v8::Object::New(isolate)),
+		v8::Local<v8::Object>(v8::Object::New(isolate)),
 		isolate(isolate),
 		handle(this->operator *())
 	{}
 
 	inline
-	ObjectWrapper(v8::Isolate* isolate, const v8::Handle<v8::Object>& rhs):
-		v8::Handle<v8::Object>(rhs),
+	ObjectWrapper(v8::Isolate* isolate, const v8::Local<v8::Object>& rhs):
+		v8::Local<v8::Object>(rhs),
 		isolate(isolate),
 		handle(this->operator *())
 	{}
 
 	inline
 	ObjectWrapper(const ObjectWrapper& rhs):
-		v8::Handle<v8::Object>(rhs),
+		v8::Local<v8::Object>(rhs),
 		isolate(rhs.isolate),
 		handle(this->operator *())
 	{}
 
 	inline
 	ObjectWrapper(ObjectWrapper&& rhs):
-		v8::Handle<v8::Object>(rhs),
+		v8::Local<v8::Object>(rhs),
 		isolate(rhs.isolate),
 		handle(this->operator *())
 	{}
@@ -103,13 +103,17 @@ struct ValueWrapper<ObjectWrapper> {
 	constexpr const char* TypeName = "object";
 
 	static inline
-	bool check(v8::Handle<v8::Value> value) {
+	bool check(v8::Local<v8::Value> value) {
 		return value->IsObject();
 	}
 
 	static inline
-	ObjectWrapper unpack(v8::Handle<v8::Value> value) {
-		return {v8::Isolate::GetCurrent(), value->ToObject()};
+	ObjectWrapper unpack(v8::Local<v8::Value> value) {
+		v8::Isolate* isolate = v8::Isolate::GetCurrent();
+		return {
+			isolate,
+			value->ToObject(isolate->GetCurrentContext()).ToLocalChecked()
+		};
 	}
 
 	static inline

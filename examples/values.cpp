@@ -17,7 +17,7 @@ void print_field(ObjectWrapper wrapper) {
 }
 
 static
-void jawra_examples_init(v8::Handle<v8::Object> module) {
+void jawra_examples_init(v8::Local<v8::Object> module) {
 	v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
 	ObjectWrapper module_wrapper(isolate, module);
