@@ -7,12 +7,7 @@
 #ifndef JAWRA_COMMON_H_
 #define JAWRA_COMMON_H_
 
-// Check C++ version
-#if !defined(__cplusplus) || __cplusplus < 201402L
-	#error You need a C++14 compliant compiler
-#endif
-
-#include <v8.h>
+#include <node.h>
 
 // Namespaces
 #define JAWRA_NS_BEGIN namespace jawra {
